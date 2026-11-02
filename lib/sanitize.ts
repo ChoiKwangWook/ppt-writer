@@ -41,8 +41,8 @@ export function sanitizeDeck(raw: unknown): { deck: Deck; notices: string[] } {
       notices.add(`슬라이드 한 장의 글머리표는 최대 ${LIMITS.bullets}개라서 넘치는 항목은 뺐어요.`);
     }
     const slide: Slide = {
-      title: text(r.title, 120),
-      bullets: bulletsIn.slice(0, LIMITS.bullets).map((b) => text(b, 300)).filter(Boolean),
+      title: text(r.title, LIMITS.titleChars),
+      bullets: bulletsIn.slice(0, LIMITS.bullets).map((b) => text(b, LIMITS.bulletChars)).filter(Boolean),
     };
     const st = style(r.style);
     if (st) slide.style = st;
@@ -55,7 +55,7 @@ export function sanitizeDeck(raw: unknown): { deck: Deck; notices: string[] } {
     }
     const nodes: DiagramNode[] = nodesIn.slice(0, LIMITS.diagramNodes).map((n) => {
       const nr = (n ?? {}) as Record<string, unknown>;
-      const node: DiagramNode = { label: text(nr.label, 40), shape: nr.shape === "circle" ? "circle" : "box" };
+      const node: DiagramNode = { label: text(nr.label, LIMITS.nodeLabelChars), shape: nr.shape === "circle" ? "circle" : "box" };
       const c = color(nr.color);
       if (c) node.color = c;
       return node;
