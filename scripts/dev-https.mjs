@@ -13,9 +13,11 @@ if (!existsSync(key) || !existsSync(cert)) {
   process.exit(1);
 }
 
+// 셸을 거치지 않고 node로 next를 직접 실행해, 경로에 공백이 있어도 안전하게 넘김
+const nextBin = join(process.cwd(), "node_modules", "next", "dist", "bin", "next");
 const child = spawn(
-  "npx",
-  ["next", "dev", "--experimental-https", "--experimental-https-key", key, "--experimental-https-cert", cert],
-  { stdio: "inherit", shell: true },
+  process.execPath,
+  [nextBin, "dev", "--experimental-https", "--experimental-https-key", key, "--experimental-https-cert", cert],
+  { stdio: "inherit" },
 );
 child.on("exit", (code) => process.exit(code ?? 0));
