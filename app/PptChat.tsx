@@ -97,7 +97,7 @@ export default function PptChat() {
   return (
     <div className="flex min-h-screen flex-col bg-zinc-100 text-zinc-900">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 bg-white px-4 py-3 sm:px-6">
-        <h1 className="text-lg font-bold">PPT 작성기</h1>
+        <div className="text-lg font-bold">PPT 작성기</div>
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm text-zinc-500">템플릿</span>
           {TEMPLATES.map((t) => (
@@ -117,6 +117,7 @@ export default function PptChat() {
 
       {!template ? (
         <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">
+          <h1 className="mb-8 text-4xl font-extrabold tracking-tight sm:text-5xl">PPT 작성기</h1>
           <h2 className="text-xl font-bold">1. 시작할 템플릿을 골라 주세요</h2>
           <p className="mt-1 text-sm text-zinc-600">나중에 내용은 그대로 두고 템플릿만 바꿔 볼 수도 있어요.</p>
           <div className="mt-6 grid gap-5 sm:grid-cols-3">
