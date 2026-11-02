@@ -27,5 +27,14 @@ export type Deck = { slides: Slide[] };
 
 export type TemplateId = "report" | "meeting" | "education";
 
-// PRD 5번 "AI가 지킬 규칙"의 한도
-export const LIMITS = { slides: 15, bullets: 5, diagramNodes: 8 } as const;
+// 모든 한도를 여기 한 곳에서만 정함 (DESIGN 4.4·6장). 프롬프트와 sanitize.ts가 함께 씀
+export const LIMITS = {
+  // PRD 5번 "AI가 지킬 규칙"의 개수 한도
+  slides: 15,
+  bullets: 5,
+  diagramNodes: 8,
+  // DESIGN 6장 보안: AI가 지나치게 긴 글을 돌려주지 못하게 하는 글자 수 한도
+  titleChars: 120,
+  bulletChars: 300,
+  nodeLabelChars: 40,
+} as const;
