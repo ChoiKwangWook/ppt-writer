@@ -16,7 +16,7 @@ export default function ConnectionStatus() {
   }, []);
 
   return (
-    <main className="flex min-h-screen flex-col gap-2 bg-white p-4 text-zinc-900">
+    <main className="flex flex-col gap-2 bg-white p-4 text-zinc-900">
       <h1 className="text-lg font-bold">PPT 작성기</h1>
       <p className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-800">PowerPoint와 연결됐어요.</p>
       <p className="text-sm text-zinc-600">

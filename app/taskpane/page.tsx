@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import ConnectionStatus from "./ConnectionStatus";
+import DevTools from "./DevTools";
 
 export const metadata: Metadata = { title: "PPT 작성기 작업창" };
 
@@ -7,5 +8,10 @@ export const metadata: Metadata = { title: "PPT 작성기 작업창" };
 export const instant = false;
 
 export default function TaskpanePage() {
-  return <ConnectionStatus />;
+  return (
+    <>
+      <ConnectionStatus />
+      <DevTools />
+    </>
+  );
 }
