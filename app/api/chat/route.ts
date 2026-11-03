@@ -18,7 +18,7 @@ const INSTRUCTIONS = `당신은 사내 직원이 PPT를 만들고 고치도록 �
 1. 한 번에 만드는 슬라이드는 최대 ${LIMITS.slides}장입니다. 더 많이 요청하면 되묻지 말고 바로 ${LIMITS.slides}장까지만 만든 뒤 reply에 그 사실을 알리세요.
 2. 슬라이드 한 장의 글머리표는 최대 ${LIMITS.bullets}개입니다. 글머리표 하나는 한두 줄 이내로 짧게 씁니다.
 3. 여러 슬라이드에 공통으로 적용할 요청(색, 굵기, 문구 바꾸기 등)은 사용자가 말한 범위의 슬라이드에만 적용하고, 범위 밖 슬라이드는 한 글자도 바꾸지 마세요. 범위를 말하지 않으면 전체 슬라이드에 적용합니다.
-4. 다이어그램은 사용자가 요청할 때만 넣습니다. 도형은 최대 ${LIMITS.diagramNodes}개, 모양은 "box"(상자)와 "circle"(원)만 쓰고, 도형은 왼쪽에서 오른쪽으로 화살표로 이어집니다.
+4. 다이어그램은 사용자가 요청할 때만 넣습니다. 도형은 최대 ${LIMITS.diagramNodes}개, 모양은 "box"(상자)와 "circle"(원)만 쓰고, 도형은 왼쪽에서 오른쪽으로 화살표로 이어집니다. 도형을 한도보다 많이 요청하면 허락을 묻지 말고 바로 ${LIMITS.diagramNodes}개까지만 넣은 뒤 reply에 그 사실을 알리세요. (예: "도형 10개짜리 다이어그램"을 요청받으면 ${LIMITS.diagramNodes}개짜리 다이어그램을 바로 넣고, reply는 "도형은 최대 ${LIMITS.diagramNodes}개까지라서 ${LIMITS.diagramNodes}개로 만들었어요."로 합니다.)
 5. "예쁘게", "깔끔하게"처럼 무엇을 바꿀지 모호한 요청이면 deck을 null로 두고, 되묻기만 하지 말고 당신이 직접 구체적인 변경안 1~2가지를 제안한 뒤 적용해도 될지 물어보세요. (예: "모든 제목을 굵게 하고, 글머리표를 3개씩으로 줄여 볼까요?") 사용자가 확인하면 그때 적용합니다.
 6. 템플릿(전체 디자인) 변경은 당신이 하지 않습니다. 요청받으면 화면 위의 템플릿 버튼을 누르라고 안내하고 deck은 null로 둡니다.
 7. 이미지 생성, 파일 올리기 등 이 앱에서 할 수 없는 요청은 정중히 할 수 없다고 답하고 deck은 null로 둡니다.
@@ -88,6 +88,15 @@ export async function POST(request: Request) {
     positions && current.slides.length > 0 && positions.length === current.slides.length && isStrictlyIncreasing(positions)
       ? positions
       : null;
+  // 요청에 나온 슬라이드 번호가 전부 사람이 만든 슬라이드 번호면 AI에게 묻지 않고 서버가 바로 거절함 (AI가 엉뚱한 슬라이드를 바꾸는 일을 막음)
+  // "2번째 글머리표"처럼 순서를 말하는 "번째"는 슬라이드 번호가 아니므로 뺌
+  const mentioned = [...message.matchAll(/(\d{1,3})\s*번(?!째)/g)].map((m) => Number(m[1]));
+  if (humanSlides?.length && mentioned.length > 0 && mentioned.every((n) => humanSlides.includes(n))) {
+    const editable = labeled?.length
+      ? `고칠 수 있는 슬라이드는 ${labeled.map((n) => `${n}번`).join(", ")}이에요.`
+      : "아직 추가 기능이 만든 슬라이드가 없어요. 먼저 슬라이드를 만들어 달라고 해 주세요.";
+    return Response.json({ reply: `추가 기능이 만든 슬라이드만 고칠 수 있어요. ${editable}`, deck: null });
+  }
   const shown = labeled ? { slides: screenList(current, labeled, humanSlides) } : current;
   const humanNote = labeled ? "" : humanSlideNote(humanSlides);
   const turns = (Array.isArray(history) ? (history as Turn[]) : [])
@@ -124,12 +133,17 @@ export async function POST(request: Request) {
       aiDeck = { slides: out.filter((s, i) => !isPlaceholder(s) && !humanAt.has(i)) };
     }
     const { deck, notices } = sanitizeDeck(aiDeck);
-    // 처음 초안을 만드는 요청에서 색·굵기를 말하지 않았다면 AI가 멋대로 넣은 서식을 지워 템플릿 기본 디자인을 따르게 함 (프롬프트 규칙을 어기는 일이 잦아 서버가 확인)
-    if (current.slides.length === 0 && !STYLE_WORDS.test(message)) {
-      for (const slide of deck.slides) {
-        delete slide.style;
-        slide.diagram?.nodes.forEach((node) => delete node.color);
-      }
+    // 색·굵기를 말하지 않았다면, 새로 생긴 슬라이드와 새로 넣은 다이어그램에 AI가 멋대로 넣은 서식·도형 색을 지워 템플릿 기본 디자인을 따르게 함
+    // (프롬프트 규칙을 어기는 일이 잦아 서버가 확인). 원래 있던 슬라이드의 서식은 그대로 둠
+    if (!STYLE_WORDS.test(message)) {
+      deck.slides.forEach((slide, j) => {
+        // 제목이 같은 슬라이드가 원래 있었으면 그것, 제목을 고친 경우에는 장수가 같을 때 같은 순서의 슬라이드를 원래 슬라이드로 봄
+        const before =
+          current.slides.find((c) => c.title === slide.title) ??
+          (current.slides.length === deck.slides.length ? current.slides[j] : undefined);
+        if (!before) delete slide.style;
+        if (!before?.diagram) slide.diagram?.nodes.forEach((node) => delete node.color);
+      });
     }
     // AI가 "바꿨다"고 말해도 사람이 만든 슬라이드는 실제로 바뀌지 않으므로, 서버가 확실히 알려 줌
     if (touchedHuman) notices.push("사람이 직접 만든 슬라이드는 바꾸지 않았어요. 추가 기능이 만든 슬라이드만 고칠 수 있어요.");

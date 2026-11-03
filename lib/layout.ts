@@ -23,12 +23,14 @@ export function fitFontSize(
   paragraphs: string[],
   box: Box,
   baseSize: number,
-  { indent = false, minSize = MIN_SIZE } = {},
+  { indent = false, minSize = MIN_SIZE, keepWords = false } = {},
 ): number {
   const availW = (box.w - TEXT_INSET * 2) * 72;
   const availH = (box.h - TEXT_INSET * 2) * 72;
   for (let size = baseSize; size > minSize; size--) {
     const lineW = availW - (indent ? size * BULLET_INDENT : 0);
+    // keepWords: 짧은 글자("1단계")가 단어 한가운데서 줄이 바뀌지 않도록, 낱말이 한 줄에 들어갈 때까지 크기를 더 줄임
+    if (keepWords && paragraphs.some((p) => p.split(/\s+/).some((w) => textWidthEm(w) * size > lineW))) continue;
     let height = 0;
     for (const p of paragraphs) {
       const lines = Math.max(1, Math.ceil((textWidthEm(p) * size) / lineW));
@@ -52,6 +54,13 @@ export type SlideLayout = {
 
 const ARROW_GAP = 0.4;
 
+// 원 안에 꼭 맞는 정사각형 (한 변이 지름의 1/√2)
+const inscribed = (b: Box): Box => {
+  const w = b.w * Math.SQRT1_2;
+  const h = b.h * Math.SQRT1_2;
+  return { x: b.x + (b.w - w) / 2, y: b.y + (b.h - h) / 2, w, h };
+};
+
 export function computeSlideLayout(slide: Slide, t: Template): SlideLayout {
   const nodesIn = slide.diagram?.nodes ?? [];
   const hasDiagram = nodesIn.length > 0;
@@ -73,7 +82,8 @@ export function computeSlideLayout(slide: Slide, t: Template): SlideLayout {
         label: node.label,
         shape: node.shape,
         color: node.color ?? t.accent,
-        size: fitFontSize([node.label], box, 14, { minSize: 8 }),
+        // 원은 글자가 들어가는 자리가 바깥 틀에 꼭 맞는 정사각형(약 70%)이라서 그 크기로 글자 크기를 맞춤
+        size: fitFontSize([node.label], node.shape === "circle" ? inscribed(box) : box, 14, { minSize: 8, keepWords: true }),
       });
       if (i < n - 1) {
         arrows.push({ x: slotX + slotW + 0.05, y: d.y + d.h / 2, w: ARROW_GAP - 0.1 });

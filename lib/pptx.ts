@@ -67,7 +67,8 @@ async function buildPresentation(deck: Deck, t: Template) {
       s.addText(n.label, {
         shape: n.shape === "circle" ? pptx.ShapeType.ellipse : pptx.ShapeType.roundRect,
         ...scaleBox(n),
-        rectRadius: 0.15 * S,
+        // 모서리 둥글기(adj)는 상자(roundRect)에만 있는 값이라, 원(ellipse)에 붙이면 PowerPoint가 파일을 열지 못함
+        ...(n.shape === "circle" ? {} : { rectRadius: 0.15 * S }),
         fill: { color: hex(n.color) },
         line: { color: hex(n.color), width: 0 },
         fontFace: t.fontFace,
